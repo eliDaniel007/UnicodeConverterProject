@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convertisseur Unicode-32 ⇄ UTF-8 — Eli Daniel</title>
+    <style>
+        :root {
+            --primary: #6C63FF;
+            --secondary: #FF2E63;
+            --dark: #0D0D0D;
+            --light: #F8F8F8;
+            --gradient: linear-gradient(45deg, #6C63FF, #FF2E63);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--dark);
+            color: var(--light);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 2rem 1rem 4rem;
+        }
+        .wrap { max-width: 820px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 2.5rem; }
+        h1 {
+            font-size: clamp(1.6rem, 5vw, 2.4rem);
+            background: var(--gradient);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.6rem;
+        }
+        header p { opacity: 0.8; max-width: 34rem; margin: 0 auto; }
+        .back { display: inline-block; margin-top: 1rem; color: var(--primary); text-decoration: none; opacity: 0.85; }
+        .back:hover { opacity: 1; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; }
+        .card {
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid rgba(108, 99, 255, 0.25);
+            border-radius: 16px;
+            padding: 1.6rem;
+        }
+        .card h2 { font-size: 1.15rem; color: var(--primary); margin-bottom: 0.4rem; }
+        .card .desc { font-size: 0.85rem; opacity: 0.75; margin-bottom: 1rem; }
+        label { display: block; font-size: 0.85rem; margin-bottom: 0.4rem; opacity: 0.9; }
+        input[type=text] {
+            width: 100%;
+            background: rgba(13, 13, 13, 0.6);
+            border: 1px solid rgba(108, 99, 255, 0.3);
+            border-radius: 8px;
+            color: var(--light);
+            padding: 0.7rem 0.8rem;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+        }
+        input[type=text]:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(108,99,255,0.25); }
+        .examples { font-size: 0.78rem; opacity: 0.65; margin-top: 0.4rem; }
+        button {
+            margin-top: 1rem; width: 100%;
+            background: var(--gradient);
+            color: var(--light);
+            border: none; border-radius: 8px;
+            padding: 0.75rem; font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 16px rgba(255,46,99,0.3); }
+        .result {
+            margin-top: 1rem; padding: 0.9rem 1rem;
+            background: rgba(13, 13, 13, 0.7);
+            border-radius: 10px;
+            border-left: 3px solid var(--primary);
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem; white-space: pre-wrap; word-break: break-word;
+            min-height: 2.6rem; display: none;
+        }
+        .result.show { display: block; }
+        .result.error { border-left-color: var(--secondary); color: #ff8fa3; }
+        .result .big { font-size: 1.15rem; color: #9d97ff; }
+        .result .char { font-size: 1.6rem; }
+        footer { text-align: center; margin-top: 2.5rem; opacity: 0.6; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header>
+            <h1>Convertisseur Unicode-32 ⇄ UTF-8</h1>
+            <p>Version web de mon application console C#. Le même code de conversion tourne côté serveur (ASP.NET) et répond ici en direct.</p>
+            <a class="back" href="https://elidaniel007.github.io/projets.html">← Retour aux projets</a>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h2>Unicode-32 → UTF-8</h2>
+                <p class="desc">Entre un code point en hexadécimal, obtiens sa séquence d'octets UTF-8.</p>
+                <label for="u32">Code point (hex)</label>
+                <input type="text" id="u32" placeholder="20AC" autocomplete="off">
+                <div class="examples">Exemples : <code>41</code> (A) · <code>E9</code> (é) · <code>20AC</code> (€) · <code>1F600</code> (😀)</div>
+                <button id="btnU32">Convertir en UTF-8</button>
+                <div class="result" id="resU32"></div>
+            </div>
+
+            <div class="card">
+                <h2>UTF-8 → Unicode-32</h2>
+                <p class="desc">Entre une séquence d'octets UTF-8 en hexadécimal (séparés par des espaces).</p>
+                <label for="utf8">Octets UTF-8 (hex)</label>
+                <input type="text" id="utf8" placeholder="E2 82 AC" autocomplete="off">
+                <div class="examples">Exemples : <code>41</code> · <code>C3 A9</code> · <code>E2 82 AC</code> · <code>F0 9F 98 80</code></div>
+                <button id="btnUtf8">Convertir en Unicode-32</button>
+                <div class="result" id="resUtf8"></div>
+            </div>
+        </div>
+
+        <footer>Eli Daniel — projet de conversion Unicode-32 ⇄ UTF-8 (C# / ASP.NET)</footer>
+    </div>
+
+    <script>
+        async function poster(url, corps, resEl) {
+            resEl.classList.remove('error');
+            resEl.classList.add('show');
+            resEl.textContent = '…';
+            try {
+                const r = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(corps)
+                });
+                const data = await r.json();
+                if (!r.ok) {
+                    resEl.classList.add('error');
+                    resEl.textContent = '⚠️ ' + (data.error || 'Erreur');
+                    return null;
+                }
+                return data;
+            } catch (e) {
+                resEl.classList.add('error');
+                resEl.textContent = '⚠️ Impossible de contacter le serveur.';
+                return null;
+            }
+        }
+
+        document.getElementById('btnU32').addEventListener('click', async () => {
+            const res = document.getElementById('resU32');
+            const data = await poster('/api/u32-to-utf8', { value: document.getElementById('u32').value }, res);
+            if (!data) return;
+            res.innerHTML = `Entrée : ${data.input}\nUTF-8 : <span class="big">${data.hex}</span>`;
+        });
+
+        document.getElementById('btnUtf8').addEventListener('click', async () => {
+            const res = document.getElementById('resUtf8');
+            const data = await poster('/api/utf8-to-u32', { bytes: document.getElementById('utf8').value }, res);
+            if (!data) return;
+            const car = data.character ? `\nCaractère : <span class="char">${data.character}</span>` : '';
+            res.innerHTML = `Entrée : ${data.input}\nUnicode-32 : <span class="big">${data.hex}</span> (${data.decimal} en décimal)${car}`;
+        });
+
+        // Entrée clavier = valider
+        document.getElementById('u32').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btnU32').click(); });
+        document.getElementById('utf8').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btnUtf8').click(); });
+    </script>
+</body>
+</html>
